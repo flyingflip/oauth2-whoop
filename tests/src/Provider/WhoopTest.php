@@ -1,24 +1,24 @@
 <?php
 
-namespace flyingflip\OAuth2\Client\Test\Provider;
+namespace FlyingFlip\OAuth2\Client\Test\Provider;
 
 use GuzzleHttp\Client;
 use League\OAuth2\Client\Token\AccessToken;
 use Psr\Http\Message\ResponseInterface;
-use djchen\OAuth2\Client\Provider\Fitbit;
-use djchen\OAuth2\Client\Provider\FitbitOptionsProvider;
+use FlyingFlip\OAuth2\Client\Provider\Whoop;
+use FlyingFlip\OAuth2\Client\Provider\WhoopOptionsProvider;
 use PHPUnit_Framework_TestCase as TestCase;
 
 class WhoopTest extends TestCase
 {
     /**
-     * @var Fitbit
+     * @var Whoop
      */
     protected $provider;
 
     protected function setUp()
     {
-        $this->provider = new Fitbit([
+        $this->provider = new Whoop([
             'clientId' => 'mock_client_id',
             'clientSecret' => 'mock_secret',
             'redirectUri' => 'none',
@@ -70,7 +70,7 @@ class WhoopTest extends TestCase
     public function testOptionsProvider()
     {
         $optionsProvider = $this->provider->getOptionProvider();
-        $this->assertInstanceOf(FitbitOptionsProvider::class, $optionsProvider);
+        $this->assertInstanceOf(WhoopOptionsProvider::class, $optionsProvider);
     }
 
     /**
@@ -82,7 +82,7 @@ class WhoopTest extends TestCase
         $httpMock = \Mockery::mock(Client::class);
         $responseMock = \Mockery::mock(ResponseInterface::class);
         $httpMock->shouldReceive('send')->andReturn($responseMock);
-        $this->provider = new Fitbit([
+        $this->provider = new Whoop([
             'clientId' => 'mock_client_id',
             'clientSecret' => 'mock_secret',
             'redirectUri' => 'none',

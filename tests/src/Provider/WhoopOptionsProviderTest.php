@@ -1,10 +1,10 @@
 <?php
 
-namespace flyingflip\OAuth2\Client\Test\Provider;
+namespace FlyingFlip\OAuth2\Client\Test\Provider;
 
 use PHPUnit_Framework_TestCase as TestCase;
 
-use flyingflip\OAuth2\Client\Provider\FitbitOptionsProvider;
+use FlyingFlip\OAuth2\Client\Provider\WoopOptionsProvider;
 
 class WhoopOptionsProviderTest extends TestCase
 {
@@ -14,7 +14,7 @@ class WhoopOptionsProviderTest extends TestCase
         $clientSecret = 'client_secret';
         $expected = 'Basic '.base64_encode($clientId . ':' . $clientSecret);
 
-        $options = new FitbitOptionsProvider($clientId, $clientSecret);
+        $options = new WhoopOptionsProvider($clientId, $clientSecret);
         $tokenOptions = $options->getAccessTokenOptions('POST', []);
 
         $this->assertArrayHasKey('headers', $tokenOptions);
