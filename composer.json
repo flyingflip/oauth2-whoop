@@ -7,7 +7,12 @@
     "license": "MIT",
     "autoload": {
         "psr-4": {
-            "Flyingflip\\Oauth2Whoop\\": "src/"
+            "flyingflip\\Oauth2\\Client\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "flyingflip\\OAuth2\\Client\\Test\\": "tests/src/"
         }
     },
     "authors": [
