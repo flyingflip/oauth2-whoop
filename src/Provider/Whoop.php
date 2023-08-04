@@ -2,7 +2,9 @@
 
 namespace FlyingFlip\OAuth2\Client\Provider;
 
+use FlyingFlip\OAuth2\Client\Provider\InvalidArgumentException;
 use League\OAuth2\Client\Provider\AbstractProvider;
+use League\OAuth2\Client\Provider\GenericResourceOwner;
 use League\OAuth2\Client\Provider\Exception\IdentityProviderException;
 use League\OAuth2\Client\Token\AccessToken;
 use League\OAuth2\Client\Tool\BearerAuthorizationTrait;
@@ -12,186 +14,248 @@ class Whoop extends AbstractProvider
 {
     use BearerAuthorizationTrait;
 
-    /**
-     * Whoop API URL.
-     *
-     * @const string
-     */
-
     const BASE_WHOOP_API_HOSTNAME = 'https://api.prod.whoop.com';
 
-    const BASE_WHOOP_API_URL = 'https://api.prod.whoop.com/oauth';
+    const BASE_WHOOP_API_URL_AUTHORIZE = 'https://api.prod.whoop.com/oauth/oauth2/auth';
+
+    const BASE_WHOOP_API_URL_ACCESS_TOKEN = 'https://api.prod.whoop.com/oauth/oauth2/token';
+
+    const URL_RESOURCE_OWNER_DETAILS = 'https://api.prod.whoop.com/developer/v1/user/profile/basic';
 
     /**
-     * HTTP header Accept-Language.
-     *
-     * @const string
+     * @var string
      */
-    const HEADER_ACCEPT_LANG = 'Accept-Language';
+    private $urlAuthorize;
 
     /**
-     * HTTP header Accept-Locale.
-     *
-     * @const string
+     * @var string
      */
-    const HEADER_ACCEPT_LOCALE = 'Accept-Locale';
+    private $urlAccessToken;
 
     /**
-     * Overridden to inject our options provider
+     * @var string
+     */
+    private $urlResourceOwnerDetails;
+
+    /**
+     * @var string
+     */
+    private $accessTokenMethod;
+
+    /**
+     * @var string
+     */
+    private $accessTokenResourceOwnerId;
+
+    /**
+     * @var array|null
+     */
+    private $scopes = null;
+
+    /**
+     * @var string
+     */
+    private $scopeSeparator;
+
+    /**
+     * @var string
+     */
+    private $responseError = 'error';
+
+    /**
+     * @var string
+     */
+    private $responseCode;
+
+    /**
+     * @var string
+     */
+    private $responseResourceOwnerId = 'id';
+
+    /**
+     * @var string|null
+     */
+    private $pkceMethod = null;
+
+    /**
      * @param array $options
      * @param array $collaborators
      */
     public function __construct(array $options = [], array $collaborators = [])
     {
-        $collaborators['optionProvider'] = new WhoopOptionsProvider(
-            $options['clientId'],
-            $options['clientSecret']
-        );
+        $defaultScopes = [
+            'offline',
+            'read:recovery',
+            'read:cycles',
+            'read:workout',
+            'read:sleep',
+            'read:profile',
+            'read:body_measurement',
+        ];
+
+        if (empty($options['scopes'])) {
+            $options['scopes'] = implode(' ', $defaultScopes);
+        } else {
+            $options['scopes'] = implode(' ', $options['scopes']);
+        }
+
+        $options['urlAuthorize'] = SELF::BASE_WHOOP_API_URL_AUTHORIZE;
+        $options['urlAccessToken'] = SELF::BASE_WHOOP_API_URL_ACCESS_TOKEN;
+        $options['urlResourceOwnerDetails'] = SELF::URL_RESOURCE_OWNER_DETAILS;
+
+        $this->assertRequiredOptions($options);
+
+        $possible   = $this->getConfigurableOptions();
+        $configured = array_intersect_key($options, array_flip($possible));
+
+        foreach ($configured as $key => $value) {
+            $this->$key = $value;
+        }
+
+        // Remove all options that are only used locally
+        $options = array_diff_key($options, $configured);
+
         parent::__construct($options, $collaborators);
     }
 
     /**
-     * Get authorization url to begin OAuth flow.
-     *
-     * @return string
-     */
-    public function getBaseAuthorizationUrl()
-    {
-        return static::BASE_WHOOP_API_URL . '/oauth2/auth';
-    }
-
-    /**
-     * Get access token url to retrieve token.
-     *
-     * @param array $params
-     *
-     * @return string
-     */
-    public function getBaseAccessTokenUrl(array $params)
-    {
-        return static::BASE_WHOOP_API_URL . '/oauth2/token';
-    }
-
-    /**
-     * Returns the url to retrieve the resource owners's profile/details.
-     *
-     * @param AccessToken $token
-     *
-     * @return string
-     */
-    public function getResourceOwnerDetailsUrl(AccessToken $token)
-    {
-        return static::BASE_WHOOP_API_HOSTNAME . '/developer/v1/user/profile/basic';
-    }
-
-    /**
-     * Returns all scopes available from Fitbit.
-     * It is recommended you only request the scopes you need!
+     * Returns all options that can be configured.
      *
      * @return array
      */
-    protected function getDefaultScopes()
+    protected function getConfigurableOptions()
     {
-        return ['read:recovery', 'read:cycles', 'read:workout', 'read:sleep', 'read:profile', 'read:body_measurement'];
+        return array_merge($this->getRequiredOptions(), [
+            'accessTokenMethod',
+            'accessTokenResourceOwnerId',
+            'scopeSeparator',
+            'responseError',
+            'responseCode',
+            'responseResourceOwnerId',
+            'scopes',
+            'pkceMethod',
+        ]);
     }
 
     /**
-     * Checks Fitbit API response for errors.
+     * Returns all options that are required.
      *
-     * @throws IdentityProviderException
-     *
-     * @param ResponseInterface $response
-     * @param array|string      $data     Parsed response data
+     * @return array
      */
-    protected function checkResponse(ResponseInterface $response, $data)
+    protected function getRequiredOptions()
     {
-        if ($response->getStatusCode() >= 400) {
-            $errorMessage = '';
-            if (!empty($data['errors'])) {
-                foreach ($data['errors'] as $error) {
-                    if (!empty($errorMessage)) {
-                        $errorMessage .= ' , ';
-                    }
-                    $errorMessage .= implode(' - ', $error);
-                }
-            } else {
-                $errorMessage = $response->getReasonPhrase();
-            }
-            throw new IdentityProviderException(
-                $errorMessage,
-                $response->getStatusCode(),
-                $response
+        return [
+            'urlAuthorize',
+            'urlAccessToken',
+            'urlResourceOwnerDetails',
+        ];
+    }
+
+    /**
+     * Verifies that all required options have been passed.
+     *
+     * @param  array $options
+     * @return void
+     * @throws InvalidArgumentException
+     */
+    private function assertRequiredOptions(array $options)
+    {
+        $missing = array_diff_key(array_flip($this->getRequiredOptions()), $options);
+
+        if (!empty($missing)) {
+            throw new InvalidArgumentException(
+                'Required options not defined: ' . implode(', ', array_keys($missing))
             );
         }
     }
 
     /**
-     * Returns the string used to separate scopes.
-     *
-     * @return string
+     * @inheritdoc
      */
-    protected function getScopeSeparator()
+    public function getBaseAuthorizationUrl()
     {
-        return ' ';
+        return $this->urlAuthorize;
     }
 
     /**
-     * Returns authorization parameters based on provided options.
-     * Fitbit does not use the 'approval_prompt' param and here we remove it.
-     *
-     * @param array $options
-     *
-     * @return array Authorization parameters
+     * @inheritdoc
      */
-    protected function getAuthorizationParameters(array $options)
+    public function getBaseAccessTokenUrl(array $params)
     {
-        $params = parent::getAuthorizationParameters($options);
-        unset($params['approval_prompt']);
-        if (!empty($options['prompt'])) {
-            $params['prompt'] = $options['prompt'];
-        }
-
-        return $params;
+        return $this->urlAccessToken;
     }
 
     /**
-     * Generates a resource owner object from a successful resource owner
-     * details request.
-     *
-     * @param array       $response
-     * @param AccessToken $token
-     *
-     * @return FitbitUser
+     * @inheritdoc
      */
-    public function createResourceOwner(array $response, AccessToken $token)
+    public function getResourceOwnerDetailsUrl(AccessToken $token)
     {
-        return new WhoopUser($response);
+        return $this->urlResourceOwnerDetails;
     }
 
     /**
-     * Returns the key used in the access token response to identify the resource owner.
-     *
-     * @return string|null Resource owner identifier key
+     * @inheritdoc
+     */
+    public function getDefaultScopes()
+    {
+        return $this->scopes;
+    }
+
+    /**
+     * @inheritdoc
+     */
+    protected function getAccessTokenMethod()
+    {
+        return $this->accessTokenMethod ?: parent::getAccessTokenMethod();
+    }
+
+    /**
+     * @inheritdoc
      */
     protected function getAccessTokenResourceOwnerId()
     {
-        return 'user_id';
-    }
-
-    public function parseResponse(ResponseInterface $response)
-    {
-        return parent::parseResponse($response);
+        return $this->accessTokenResourceOwnerId ?: parent::getAccessTokenResourceOwnerId();
     }
 
     /**
-     * Parse Fitbit API Rate Limit headers and return a FitbitRateLimit object.
-     *
-     * @param ResponseInterface $response
-     *
-     * @return FitbitRateLimit Fitbit API Rate Limit information
+     * @inheritdoc
      */
-    public function getWhoopRateLimit(ResponseInterface $response)
+    protected function getScopeSeparator()
     {
-        return new WhoopRateLimit($response);
+        return $this->scopeSeparator ?: parent::getScopeSeparator();
+    }
+
+    /**
+     * @inheritdoc
+     */
+    protected function getPkceMethod()
+    {
+        return $this->pkceMethod ?: parent::getPkceMethod();
+    }
+
+    /**
+     * @inheritdoc
+     */
+    protected function checkResponse(ResponseInterface $response, $data)
+    {
+        if (!empty($data[$this->responseError])) {
+            $error = $data[$this->responseError];
+            if (!is_string($error)) {
+                $error = var_export($error, true);
+            }
+            $code  = $this->responseCode && !empty($data[$this->responseCode])? $data[$this->responseCode] : 0;
+            if (!is_int($code)) {
+                $code = intval($code);
+            }
+            throw new IdentityProviderException($error, $code, $data);
+        }
+    }
+
+    /**
+     * @inheritdoc
+     */
+    protected function createResourceOwner(array $response, AccessToken $token)
+    {
+        return new GenericResourceOwner($response, $this->responseResourceOwnerId);
     }
 }

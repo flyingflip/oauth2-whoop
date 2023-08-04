@@ -17,11 +17,11 @@ class WhoopRateLimit
     public function __construct(ResponseInterface $response)
     {
         if ($response->getStatusCode() == 429) {
-            $this->retryAfter = $response->getHeader('Retry-After')[0];
+            $this->retryAfter = $response->getHeader('X-RateLimit-Reset')[0];
         }
-        $this->limit = $response->getHeader('Fitbit-Rate-Limit-Limit')[0];
-        $this->remaining = $response->getHeader('Fitbit-Rate-Limit-Remaining')[0];
-        $this->reset = $response->getHeader('Fitbit-Rate-Limit-Reset')[0];
+        $this->limit = $response->getHeader('X-RateLimit-Limit')[0];
+        $this->remaining = $response->getHeader('X-RateLimit-Remaining')[0];
+        $this->reset = $response->getHeader('X-RateLimit-Reset')[0];
     }
 
     /**

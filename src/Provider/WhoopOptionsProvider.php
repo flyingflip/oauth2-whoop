@@ -39,8 +39,8 @@ class WhoopOptionsProvider extends PostAuthOptionProvider
     public function getAccessTokenOptions($method, array $params)
     {
         $options = parent::getAccessTokenOptions($method, $params);
-        $options['headers']['Authorization'] =
-            'Basic '.base64_encode($this->clientId.':'.$this->clientSecret);
+        // $options['headers']['Authorization'] =
+        //     'Basic '.base64_encode($this->clientId.':'.$this->clientSecret);
 
         return $options;
     }
