@@ -1,0 +1,20 @@
+{
+    "name": "flyingflip/oauth2-whoop",
+    "description": "Whoop OAuth 2.0 Client Provider for the PHP League Oauth2-Client",
+    "require": {
+        "league/oauth2-client": "^2.7"
+    },
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Flyingflip\\Oauth2Whoop\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Michael R. Bagnall",
+            "email": "mbagnall@flyingflip.com",
+            "homepage": "https://www.flyingflip.com"
+        }
+    ]
+}
