@@ -7,7 +7,7 @@
     "license": "MIT",
     "autoload": {
         "psr-4": {
-            "FlyingFlip\\Oauth2\\Client\\": "src/"
+            "FlyingFlip\\OAuth2\\Client\\": "src/"
         }
     },
     "autoload-dev": {
