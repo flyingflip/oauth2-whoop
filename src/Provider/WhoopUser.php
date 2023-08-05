@@ -33,7 +33,7 @@ class WhoopUser implements ResourceOwnerInterface
     {
         return $this->userInfo['first_name'] . ' ' . $this->userInfo['last_name'];
     }
-    
+
     public function getEmail()
     {
         return $this->userInfo['email'];
