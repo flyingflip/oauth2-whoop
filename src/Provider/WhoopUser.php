@@ -16,12 +16,12 @@ class WhoopUser implements ResourceOwnerInterface
      */
     public function __construct(array $response)
     {
-        $this->userInfo = $response['user'];
+        $this->userInfo = $response;
     }
 
     public function getId()
     {
-        return $this->userInfo['encodedId'];
+        return $this->userInfo['user_id'];
     }
 
     /**
@@ -31,7 +31,12 @@ class WhoopUser implements ResourceOwnerInterface
      */
     public function getDisplayName()
     {
-        return $this->userInfo['displayName'];
+        return $this->userInfo['first_name'] . ' ' . $this->userInfo['last_name'];
+    }
+    
+    public function getEmail()
+    {
+        return $this->userInfo['email'];
     }
 
     /**

@@ -256,6 +256,6 @@ class Whoop extends AbstractProvider
      */
     protected function createResourceOwner(array $response, AccessToken $token)
     {
-        return new GenericResourceOwner($response, $this->responseResourceOwnerId);
+        return new WhoopUser($response);
     }
 }
